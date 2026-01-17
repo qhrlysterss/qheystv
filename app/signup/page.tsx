@@ -1,19 +1,23 @@
 "use client"
 
+import type React from "react"
+
+import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
-import { signUp } from "@/app/actions/auth"
-import { useActionState } from "react"
-import { useSearchParams } from "next/navigation"
-import { Suspense, useRef, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useState, useRef, useEffect } from "react"
 
-function SignUpForm() {
-  const searchParams = useSearchParams()
-  const redirect = searchParams.get("redirect")
-  const [state, formAction, isPending] = useActionState(signUp, undefined)
+export default function SignUpPage() {
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [repeatPassword, setRepeatPassword] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
   const videoRef = useRef<HTMLVideoElement>(null)
   const playPromiseRef = useRef<Promise<void> | null>(null)
 
@@ -28,7 +32,6 @@ function SignUpForm() {
     const video = videoRef.current
     video.addEventListener("canplay", handleCanPlay)
 
-    // Clean up on unmount
     return () => {
       video.removeEventListener("canplay", handleCanPlay)
       if (playPromiseRef.current) {
@@ -36,6 +39,41 @@ function SignUpForm() {
       }
     }
   }, [])
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const supabase = createClient()
+    setIsLoading(true)
+    setError(null)
+
+    if (password !== repeatPassword) {
+      setError("Passwords do not match")
+      setIsLoading(false)
+      return
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters")
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/dashboard`,
+        },
+      })
+      if (error) throw error
+      router.push("/dashboard")
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "An error occurred")
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
@@ -55,68 +93,60 @@ function SignUpForm() {
       <Card className="w-full max-w-md relative z-10 m-4">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
-          <CardDescription>
-            Get started with QheysTV today
-            {redirect && <span className="block mt-1 text-xs">Sign up to continue</span>}
-          </CardDescription>
+          <CardDescription>Get started with QheysTV today</CardDescription>
         </CardHeader>
-        <form action={formAction}>
-          {redirect && <input type="hidden" name="redirect" value={redirect} />}
-          <CardContent className="space-y-4">
-            {state?.error && (
-              <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">{state.error}</div>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input id="name" name="name" type="text" placeholder="John Doe" required disabled={isPending} />
+        <CardContent>
+          <form onSubmit={handleSignUp}>
+            <div className="flex flex-col gap-6">
+              {error && <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">{error}</div>}
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="At least 6 characters"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="repeat-password">Repeat Password</Label>
+                <Input
+                  id="repeat-password"
+                  type="password"
+                  required
+                  value={repeatPassword}
+                  onChange={(e) => setRepeatPassword(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Creating account..." : "Sign Up"}
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" placeholder="you@example.com" required disabled={isPending} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="At least 6 characters"
-                required
-                disabled={isPending}
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? "Creating account..." : "Sign Up"}
-            </Button>
-            <p className="text-sm text-center text-muted-foreground">
+            <div className="mt-4 text-center text-sm">
               Already have an account?{" "}
-              <Link href={`/login${redirect ? `?redirect=${redirect}` : ""}`} className="text-primary hover:underline">
+              <Link href="/login" className="text-primary hover:underline">
                 Sign in
               </Link>
-            </p>
-          </CardFooter>
-        </form>
+            </div>
+          </form>
+        </CardContent>
       </Card>
     </div>
-  )
-}
-
-export default function SignUpPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600">
-          <Card className="w-full max-w-md">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold">Loading...</CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
-      }
-    >
-      <SignUpForm />
-    </Suspense>
   )
 }
