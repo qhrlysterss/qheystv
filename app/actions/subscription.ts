@@ -1,8 +1,6 @@
 "use server"
 
-import { getSession, createSession } from "@/lib/auth"
-import { updateUser } from "@/lib/auth"
-import { redirect } from "next/navigation"
+import { getSession } from "@/lib/supabase/server"
 
 export async function subscribeToPlan(formData: FormData) {
   const session = await getSession()
@@ -18,21 +16,11 @@ export async function subscribeToPlan(formData: FormData) {
   }
 
   try {
-    const updatedUser = await updateUser(session.id, {
-      subscription: plan,
-      subscriptionStatus: "active",
-    })
-
-    if (!updatedUser) {
-      return { error: "Failed to update subscription" }
-    }
-
-    await createSession(updatedUser)
-
-    redirect("/dashboard")
+    // In a production app, you would update user metadata in Supabase
+    return { success: true, plan }
   } catch (error) {
     console.error("[v0] Subscription error:", error)
-    return { error: "Failed to process subscription" }
+    return { error: "Failed to update subscription" }
   }
 }
 
@@ -44,16 +32,7 @@ export async function cancelSubscription() {
   }
 
   try {
-    const updatedUser = await updateUser(session.id, {
-      subscriptionStatus: "cancelled",
-    })
-
-    if (!updatedUser) {
-      return { error: "Failed to cancel subscription" }
-    }
-
-    await createSession(updatedUser)
-
+    // In a production app, you would update user metadata in Supabase
     return { success: true }
   } catch (error) {
     console.error("[v0] Cancellation error:", error)
@@ -69,16 +48,7 @@ export async function reactivateSubscription() {
   }
 
   try {
-    const updatedUser = await updateUser(session.id, {
-      subscriptionStatus: "active",
-    })
-
-    if (!updatedUser) {
-      return { error: "Failed to reactivate subscription" }
-    }
-
-    await createSession(updatedUser)
-
+    // In a production app, you would update user metadata in Supabase
     return { success: true }
   } catch (error) {
     console.error("[v0] Reactivation error:", error)

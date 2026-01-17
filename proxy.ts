@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { getSession } from "@/lib/auth"
+import { getSession } from "@/lib/supabase/server"
 
 const publicRoutes = ["/", "/login", "/signup", "/browse"]
 const authRoutes = ["/login", "/signup"]

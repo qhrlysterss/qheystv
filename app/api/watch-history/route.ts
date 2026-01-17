@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getSession } from "@/lib/auth"
+import { getSession } from "@/lib/supabase/server"
 import { getWatchHistory, updateWatchHistory } from "@/lib/content"
 
 export async function GET() {
@@ -28,11 +28,9 @@ export async function POST(request: NextRequest) {
 
     const { contentId, progress } = await request.json()
 
-    if (!contentId || typeof progress !== "number") {
-      return NextResponse.json({ error: "Invalid request data" }, { status: 400 })
-    }
-
+    // Update watch history with the new contentId and progress
     await updateWatchHistory(session.id, contentId, progress)
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("[v0] Error updating watch history:", error)
